@@ -443,45 +443,49 @@ bool AnnotationManager::loadFiles(const QString &fileName){
         spNumberVal = imageType == "SPA" ? "2000" : "500";
     }
 
-    if (!fileDir.cd("../../segmentations/superpixels")){
+    if (!fileDir.cd("../../segmentations/superpixels/" + imageType + spNumberVal + segmentationMethod)){
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find segmentation directory!"));
+                                 tr("Cannot find %0 segmentation data for %1 with %2 superpixels!")
+                                 .arg(segmentationMethod).arg(imageType).arg(spNumberVal));
         return false;
     }
 
     if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0SuperPixel%1_%2_%3_%4_%5_2_.raw")
     .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), spData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find segmentation data! Please load file again."));
+                                 tr("Cannot find segmentation data! "
+                                    "Please make sure they are available and load the file again."));
         return false;
     }
 
-    if (!fileDir.cd("../grids")){
+    if (!fileDir.cd("../../grids/"  + imageType + spNumberVal + segmentationMethod)){
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find grid directory!"));
+                                 tr("Cannot find %0 grid data for %1 with %2 superpixels!")
+                                         .arg(segmentationMethod).arg(imageType).arg(spNumberVal));
         return false;
     }
 
     if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw")
     .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find grid data! Please load file again."));
+                                 tr("Cannot find segmentation data! "
+                                    "Please make sure they are available and load the file again."));
         return false;
     }
 
-    if (!fileDir.mkpath("../../annotations/sp")){
+    if (!fileDir.mkpath("../../annotations/sp/" + imageType + spNumberVal + segmentationMethod)){
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Could not create annotations directory!"));
         return false;
         }
 
-    if (!fileDir.mkpath("../../annotations/manual")){
+    if (!fileDir.mkpath("../../annotations/manual/" + imageType + spNumberVal + segmentationMethod)){
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Could not create annotations directory!"));
         return false;
     }
 
-    fileDir.cd("../../annotations/sp");
+    fileDir.cd("../../annotations/sp/" + imageType + spNumberVal + segmentationMethod);
 
     spAnnFileName = fileDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
             .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
@@ -498,7 +502,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
         saveRaw(spAnnFileName, spAnnotationData);
     }
 
-    fileDir.cd("../manual");
+    fileDir.cd("../../manual/" + imageType + spNumberVal + segmentationMethod);
 
     manualCorrFileName = fileDir.path() + QString(QDir::separator()) + QString("%0manualAnnotations%1_%2_%3_%4_%5_1_.raw")
             .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
