@@ -40,6 +40,7 @@ private slots:
     void changeDisplayGrid();
     void changeDisplayAnnotations();
     void instructions();
+    // TODO findMissingAnnotations() - method to find numbers of patients for which annotations have not been done yet
 
 private:
     void createActions();
@@ -73,8 +74,9 @@ private:
     QString spAnnFileName;
     QString manualCorrFileName;
     QString loadedFileName = "";
+    QString imageType;
     QString segmentationMethod = "LSC";
-    QString spNumber = "1000";
+    QString spNumber = "LOWER";
 
     int imageWidth {};
     int imageHeight {};
@@ -100,6 +102,8 @@ private:
     QAction *closeImgAct;
     QActionGroup *segMethodChoiceGroup;
     QActionGroup *spNumberChoiceGroup;
+    QAction *setLessSpAct;
+    QAction *setMoreSpAct;
     QAction *resetAnnotationsAct;
     QAction *changeAnnotationsModeAct;
     QAction *increaseManualPenSizeAct;

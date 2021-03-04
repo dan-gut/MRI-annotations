@@ -121,16 +121,16 @@ void AnnotationManager::createActions() {
     QMenu *spNumberMenu = fileMenu->addMenu(tr("&Number of superpixels"));
     spNumberChoiceGroup = new QActionGroup(this);
     spNumberChoiceGroup->setExclusive(true);
-    QAction *set1000Act = spNumberMenu->addAction(tr("1000"));
-    set1000Act->setData("1000");
-    set1000Act->setCheckable(true);
-    set1000Act->setChecked(true);
-    spNumberChoiceGroup->addAction(set1000Act);
+    setLessSpAct = spNumberMenu->addAction(tr("Lower (bigger regions)"));
+    setLessSpAct->setData("LOWER");
+    setLessSpAct->setCheckable(true);
+    setLessSpAct->setChecked(true);
+    spNumberChoiceGroup->addAction(setLessSpAct);
 
-    QAction *set2000Act = spNumberMenu->addAction(tr("2000"));
-    set2000Act->setData("2000");
-    set2000Act->setCheckable(true);
-    spNumberChoiceGroup->addAction(set2000Act);
+    setMoreSpAct = spNumberMenu->addAction(tr("Higher (smaller regions)"));
+    setMoreSpAct->setData("HIGHER");
+    setMoreSpAct->setCheckable(true);
+    spNumberChoiceGroup->addAction(setMoreSpAct);
 
     connect(spNumberChoiceGroup, SIGNAL(triggered(QAction*)), SLOT(chooseSPNumber(QAction*)));
 
@@ -209,6 +209,9 @@ void AnnotationManager::updateActions() {
     previousSliceAct->setEnabled(filesLoaded);
     displayGridAct->setEnabled(filesLoaded);
     displayAnnotationsAct->setEnabled(filesLoaded);
+
+    imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("250"));
+    imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("500"));
 }
 
 void AnnotationManager::mousePressEvent(QMouseEvent *event) {
@@ -380,16 +383,18 @@ void AnnotationManager::markSuperPixel(const QPoint &position, const bool &addin
 }
 
 bool AnnotationManager::loadFiles(const QString &fileName){
-    QStringList imgParams=fileName.split("_");
+    QDir fileDir(fileName);
+    QFileInfo fileInfo(fileName);
+    QStringList imgParams=fileInfo.fileName().split("_");
 
+    imageType = imgParams[imgParams.size()-7];
     int patientNo = imgParams[imgParams.size()-6].toInt();
     imageWidth = imgParams[imgParams.size()-5].toInt();
     imageHeight = imgParams[imgParams.size()-4].toInt();
     slicesNo = imgParams[imgParams.size()-3].toInt();
 
     stirData = new unsigned short **[slicesNo];
-    for (int i = 0; i < slicesNo; i++)
-    {
+    for (int i = 0; i < slicesNo; i++) {
         stirData[i] = new unsigned short *[imageWidth];
 
         for (int j = 0; j < imageWidth; j++)
@@ -397,8 +402,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     }
 
     spData = new unsigned short **[slicesNo];
-    for (int i = 0; i < slicesNo; i++)
-    {
+    for (int i = 0; i < slicesNo; i++) {
         spData[i] = new unsigned short *[imageWidth];
 
         for (int j = 0; j < imageWidth; j++)
@@ -406,8 +410,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     }
 
     spAnnotationData = new char **[slicesNo];
-    for (int i = 0; i < slicesNo; i++)
-    {
+    for (int i = 0; i < slicesNo; i++) {
         spAnnotationData[i] = new char *[imageWidth];
 
         for (int j = 0; j < imageWidth; j++)
@@ -415,8 +418,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     }
 
     manualCorrectionsData = new char **[slicesNo];
-    for (int i = 0; i < slicesNo; i++)
-    {
+    for (int i = 0; i < slicesNo; i++) {
         manualCorrectionsData[i] = new char *[imageWidth];
 
         for (int j = 0; j < imageWidth; j++)
@@ -424,8 +426,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     }
 
     gridData = new bool **[slicesNo];
-    for (int i = 0; i < slicesNo; i++)
-    {
+    for (int i = 0; i < slicesNo; i++) {
         gridData[i] = new bool *[imageWidth];
 
         for (int j = 0; j < imageWidth; j++)
@@ -434,7 +435,14 @@ bool AnnotationManager::loadFiles(const QString &fileName){
 
     loadRaw(fileName, stirData);
 
-    QDir fileDir(fileName);
+    QString spNumberVal;
+
+    if (spNumber == "LOWER") {
+        spNumberVal = imageType == "SPA" ? "1000" : "250";
+    } else {
+        spNumberVal = imageType == "SPA" ? "2000" : "500";
+    }
+
     if (!fileDir.cd("../../segmentations/superpixels")){
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Cannot find segmentation directory!"));
@@ -442,9 +450,9 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     }
 
     if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0SuperPixel%1_%2_%3_%4_%5_2_.raw")
-    .arg(spNumber).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), spData)) {
+    .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), spData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find segmentation data!"));
+                                 tr("Cannot find segmentation data! Please load file again."));
         return false;
     }
 
@@ -455,9 +463,9 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     }
 
     if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw")
-    .arg(spNumber).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
+    .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find grid data!"));
+                                 tr("Cannot find grid data! Please load file again."));
         return false;
     }
 
@@ -476,7 +484,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     fileDir.cd("../../annotations/sp");
 
     spAnnFileName = fileDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
-            .arg(spNumber).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+            .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
 
     if(QFileInfo::exists(spAnnFileName))
     {
@@ -493,7 +501,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     fileDir.cd("../manual");
 
     manualCorrFileName = fileDir.path() + QString(QDir::separator()) + QString("%0manualAnnotations%1_%2_%3_%4_%5_1_.raw")
-            .arg(spNumber).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+            .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
 
     if(QFileInfo::exists(manualCorrFileName))
     {
@@ -619,7 +627,7 @@ bool AnnotationManager::saveRaw(const QString &fileName, char ***dataArray) cons
     return true;
 }
 
-void AnnotationManager::updateDisplay(){
+void AnnotationManager::updateDisplay() {
     QPixmap display(imageWidth, imageHeight);
     QPainter painter(&display);
 
@@ -643,7 +651,7 @@ void AnnotationManager::updateDisplay(){
         }
     painter.drawImage(QPoint(0,0), stirImage);
 
-    if(displayAnnotations){
+    if(displayAnnotations) {
         for (int x = 0; x < imageWidth; x++)
             for (int y = 0; y < imageHeight; y++) {
                 if (spAnnotationData[currSlice][x][y] + manualCorrectionsData[currSlice][x][y] > 0) {
@@ -656,7 +664,7 @@ void AnnotationManager::updateDisplay(){
         painter.drawImage(QPoint(0,0), annotationImage);
     }
 
-    if(displayGrid){
+    if(displayGrid) {
         for (int x = 0; x < imageWidth; x++)
             for (int y = 0; y < imageHeight; y++) {
                 if (gridData[currSlice][x][y]) {
@@ -681,8 +689,7 @@ void AnnotationManager::updateDisplay(){
     scrollArea->verticalScrollBar()->setValue(verticalScrollValue);
 }
 
-void AnnotationManager::open()
-{
+void AnnotationManager::open() {
     QFileDialog dialog(this, tr("Open File"));
     static bool firstDialog = true;
     static QDir lastFileDir;
@@ -709,8 +716,7 @@ void AnnotationManager::open()
     }
 }
 
-void AnnotationManager::save()
-{
+void AnnotationManager::save() {
     if (!saveRaw(spAnnFileName, spAnnotationData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Could not save annotations, please try again."));
