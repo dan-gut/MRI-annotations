@@ -146,7 +146,7 @@ void AnnotationManager::createActions() {
     resetAnnotationsAct->setEnabled(false);
 
     changeAnnotationsModeAct = editMenu->addAction(tr("&Manual corrections"), this, &AnnotationManager::changeAnnotationMode);
-    changeAnnotationsModeAct->setShortcut(tr("Ctrl+M"));
+    changeAnnotationsModeAct->setShortcut(Qt::Key_M);
     changeAnnotationsModeAct->setEnabled(false);
 
     increaseManualPenSizeAct = editMenu->addAction(tr("&Increase manual correction pen size"), this, &AnnotationManager::increaseManualPenSize);
@@ -174,19 +174,19 @@ void AnnotationManager::createActions() {
     viewMenu->addSeparator();
 
     nextSliceAct = viewMenu->addAction(tr("&Next slice"), this, &AnnotationManager::nextSlice);
-    nextSliceAct->setShortcut(QKeySequence::Forward);
+    nextSliceAct->setShortcut(Qt::Key_Right);
     nextSliceAct->setEnabled(false);
 
     previousSliceAct = viewMenu->addAction(tr("&Previous slice"), this, &AnnotationManager::previousSlice);
-    previousSliceAct->setShortcut(QKeySequence::Back);
+    previousSliceAct->setShortcut(Qt::Key_Left);
     previousSliceAct->setEnabled(false);
 
     displayGridAct = viewMenu->addAction(tr("Display &grid"), this, &AnnotationManager::changeDisplayGrid);
-    displayGridAct->setShortcut(tr("Ctrl+G"));
+    displayGridAct->setShortcut(Qt::Key_G);
     displayGridAct->setEnabled(false);
 
     displayAnnotationsAct = viewMenu->addAction(tr("Display &annotations"), this, &AnnotationManager::changeDisplayAnnotations);
-    displayAnnotationsAct->setShortcut(tr("Ctrl+A"));
+    displayAnnotationsAct->setShortcut(Qt::Key_A);
     displayAnnotationsAct->setEnabled(false);
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
@@ -875,7 +875,7 @@ void AnnotationManager::instructions() {
                           "Choose segmentation method for which you want to make annotations in File menu.</p>"
                           "<p>3. Use left mouse button to mark new region as a lesion.</p>"
                           "<p>4. Use right mouse button to remove part of annotation.</p>"
-                          "<p>5. To make corrections turn on manual corrections mode (Ctrl+M). "
+                          "<p>5. To make corrections turn on manual corrections mode (M key). "
                           "It allows to make annotations regardless image segmentation. "
                           "You can adjust size of correction pen in Edit menu (or using Ctrl+Shift++/Ctrl+Shift+-).</p>"
                           "<p>6. Remember to save annotations once you finish your work in File menu (Ctrl+S)."
