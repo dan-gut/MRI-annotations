@@ -454,7 +454,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), spData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Cannot find segmentation data! "
-                                    "Please make sure they are available and load the file again."));
+                                    "Please make sure it is available and load the file again."));
         return false;
     }
 
@@ -468,8 +468,8 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw")
     .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find segmentation data! "
-                                    "Please make sure they are available and load the file again."));
+                                 tr("Cannot find grid data! "
+                                    "Please make sure it is available and load the file again."));
         return false;
     }
 
@@ -534,6 +534,7 @@ bool AnnotationManager::loadRaw(const QString &fileName, unsigned short ***dataA
     imageFileStream.open(fileName.toStdString(), std::ios::ate | std::ios::binary);
     if (imageFileStream.fail()){
         imageFileStream.close();
+        return false;
     } else {
         std::streampos size;
         char *memBlock;
@@ -563,6 +564,7 @@ bool AnnotationManager::loadRaw(const QString &fileName, char ***dataArray) cons
     imageFileStream.open(fileName.toStdString(), std::ios::ate | std::ios::binary);
     if (imageFileStream.fail()){
         imageFileStream.close();
+        return false;
     } else {
         std::streampos size;
         char *memBlock;
