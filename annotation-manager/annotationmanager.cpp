@@ -210,8 +210,8 @@ void AnnotationManager::updateActions() {
     displayGridAct->setEnabled(filesLoaded);
     displayAnnotationsAct->setEnabled(filesLoaded);
 
-    imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("250"));
-    imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("500"));
+    imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("1250")); // 1000 for SPA, 1250 for KNEE
+    imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("2500")); // 2000 for SPA, 2500 for KNEE
 }
 
 void AnnotationManager::mousePressEvent(QMouseEvent *event) {
@@ -438,9 +438,9 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     QString spNumberVal;
 
     if (spNumber == "LOWER") {
-        spNumberVal = imageType == "SPA" ? "1000" : "250";
+        spNumberVal = imageType == "SPA" ? "1000" : "1250"; // 1000 for SPA, 1250 for KNEE
     } else {
-        spNumberVal = imageType == "SPA" ? "2000" : "500";
+        spNumberVal = imageType == "SPA" ? "2000" : "2500"; // 2000 for SPA, 2500 for KNEE
     }
 
     if (!fileDir.cd("../../segmentations/superpixels/" + imageType + spNumberVal + segmentationMethod)){
@@ -549,7 +549,7 @@ bool AnnotationManager::loadRaw(const QString &fileName, unsigned short ***dataA
             for (int y = 0; y < imageHeight; y++)
                 for (int x = 0; x < imageWidth; x++) {
                     dataArray[sl_no][x][y] = 256 * static_cast<unsigned char>(memBlock[currByte])
-                                            + static_cast<unsigned char>(memBlock[currByte + 1]);
+                                             + static_cast<unsigned char>(memBlock[currByte + 1]);
                     currByte += 2;
                 }
         delete[] memBlock;
@@ -839,8 +839,8 @@ void AnnotationManager::scaleImage(double factor)
     adjustScrollBar(scrollArea->horizontalScrollBar(), factor);
     adjustScrollBar(scrollArea->verticalScrollBar(), factor);
 
-    zoomInAct->setEnabled(scaleFactor < 3.0);
-    zoomOutAct->setEnabled(scaleFactor > 0.333);
+    zoomInAct->setEnabled(scaleFactor < 5.0);
+    zoomOutAct->setEnabled(scaleFactor > 0.2);
 }
 
 void AnnotationManager::adjustScrollBar(QScrollBar *scrollBar, double factor)

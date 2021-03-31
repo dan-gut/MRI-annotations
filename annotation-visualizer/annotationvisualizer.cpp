@@ -670,8 +670,8 @@ void AnnotationVisualizer::scaleImage(double factor)
     adjustScrollBar(scrollArea->horizontalScrollBar(), factor);
     adjustScrollBar(scrollArea->verticalScrollBar(), factor);
 
-    zoomInAct->setEnabled(scaleFactor < 3.0);
-    zoomOutAct->setEnabled(scaleFactor > 0.333);
+    zoomInAct->setEnabled(scaleFactor < 5.0);
+    zoomOutAct->setEnabled(scaleFactor > 0.2);
 }
 
 void AnnotationVisualizer::adjustScrollBar(QScrollBar *scrollBar, double factor)
