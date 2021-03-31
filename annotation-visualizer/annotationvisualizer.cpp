@@ -159,7 +159,7 @@ void AnnotationVisualizer::createActions() {
     displayGridAct->setShortcut(Qt::Key_G);
     displayGridAct->setEnabled(false);
 
-    annotationsMenu = menuBar()->addMenu(tr("&Annotations"));
+    annotationsMenu = menuBar()->addMenu(tr("A&nnotations"));
 
     hideAnnotationsAct = annotationsMenu->addAction(tr("Hide annotations"), this, &AnnotationVisualizer::hideAnnotations);
     hideAnnotationsAct->setShortcut(Qt::Key_A);
@@ -709,6 +709,16 @@ void AnnotationVisualizer::changeDisplayedAnnotations(QAction* changeDisplayedAn
 void AnnotationVisualizer::instructions() {
     QMessageBox::about(this, tr("Instructions"),
                        tr("<p><b>Instructions:</b></p>"
-                          "<p> TODO </p>"
+                          "<p> 1. Place all annotations you wish to compare in directory: \"your_images_directory/../annotations\". "
+                          "Annotations made by each rater should be placed in separate folder and have "
+                          "unchanged directory structure created by Annotation Manager.</p>"
+                          "<p> 2. If you wish to have a possibility to display grid place grid data in directory: "
+                          "\"your_images_directory/../segmentations/grids\". "
+                          "Keep the directory structure matching the one in Annotation Manager.</p>"
+                          "<p> 3. Choose desired segmentation method and number of superpixels in the File menu "
+                          "and load the image.</p>"
+                          "<p> 4. In Annotations menu choose which annotations should be displayed. "
+                          "Annotations are displayed in heatmap colour palette where dark blue means the region was "
+                          "marked by only one rater and red means it was marked by all raters."
                        ));
 }
