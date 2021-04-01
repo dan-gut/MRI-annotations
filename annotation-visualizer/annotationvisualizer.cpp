@@ -274,12 +274,12 @@ bool AnnotationVisualizer::loadFiles(const QString &fileName){
                                  tr("%0 grid data for %1 with %2 superpixels is not available. "
                                     "Grid cannot be displayed, please provide proper file "
                                     "and reload the image to activate this feature")
-                                    .arg(imageType).arg(segmentationMethod).arg(spNumberVal));
+                                         .arg(imageType).arg(segmentationMethod).arg(spNumberVal));
         gridDataAvailable = false;
     } else {
         if (!loadRaw(fileDir.path() + QString(QDir::separator()) +
-        QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw").arg(spNumberVal).arg(segmentationMethod)
-        .arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
+                     QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw").arg(spNumberVal).arg(segmentationMethod)
+                             .arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
             QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                      tr("Cannot find grid data! "
                                         "Please make sure it is available and load the file again."));
@@ -645,6 +645,8 @@ void AnnotationVisualizer::save() {
         return;
     }
     imageLabel->pixmap(Qt::ReturnByValue).save(&imageFile, "PNG");
+
+    lastFileDir =QFileInfo(filename).absoluteDir();
 }
 
 void AnnotationVisualizer::closeImg() {
