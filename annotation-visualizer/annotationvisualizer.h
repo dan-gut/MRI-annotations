@@ -25,6 +25,7 @@ public:
 
 private slots:
     void open();
+    void save();
     void closeImg();
     void chooseSegmentationMethod(QAction* chooseMethodAct);
     void chooseSPNumber(QAction* chooseSPNumberAct);
@@ -82,6 +83,7 @@ private:
     QLabel *imageLabel;
     QScrollArea *scrollArea;
 
+    QAction *saveAct;
     QAction *closeImgAct;
     QActionGroup *segMethodChoiceGroup;
     QActionGroup *spNumberChoiceGroup;

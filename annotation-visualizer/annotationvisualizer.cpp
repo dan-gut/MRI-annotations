@@ -89,6 +89,10 @@ void AnnotationVisualizer::createActions() {
     QAction *openAct = fileMenu->addAction(tr("&Open"), this, &AnnotationVisualizer::open);
     openAct->setShortcut(QKeySequence::Open);
 
+    saveAct = fileMenu->addAction(tr("&Save displayed image"), this, &AnnotationVisualizer::save);
+    saveAct->setShortcut(QKeySequence::Save);
+    saveAct->setEnabled(false);
+
     closeImgAct = fileMenu->addAction(tr("&Close image"), this, &AnnotationVisualizer::closeImg);
     closeImgAct->setEnabled(false);
 
@@ -214,6 +218,7 @@ void AnnotationVisualizer::addAnnotatorsActions() {
 
 void AnnotationVisualizer::updateActions() {
     bool filesLoaded = loadedFileName != "";
+    saveAct->setEnabled(filesLoaded);
     closeImgAct->setEnabled(filesLoaded);
     normalSizeAct->setEnabled(filesLoaded);
     zoomInAct->setEnabled(filesLoaded);
@@ -617,6 +622,31 @@ void AnnotationVisualizer::open() {
     }
 }
 
+void AnnotationVisualizer::save() {
+    QFileDialog dialog(this, tr("Save image"));
+    static bool firstDialog = true;
+    static QDir lastFileDir;
+
+    if (firstDialog) {
+        firstDialog = false;
+        const QStringList picturesLocations = QStandardPaths::standardLocations(QStandardPaths::PicturesLocation);
+        lastFileDir.setPath(picturesLocations.isEmpty() ? QDir::currentPath() : picturesLocations.last());
+    }
+
+    QString filename = QFileDialog::getSaveFileName(this, tr("Save File"),
+                                                    lastFileDir.path(),
+                                                    tr("PNG Images (*.png)"));
+    if (filename.isEmpty()) {return;}
+
+    QFile imageFile(filename);
+    if (!imageFile.open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                 tr("Saving image failed, please try again!"));
+        return;
+    }
+    imageLabel->pixmap()->save(&imageFile, "PNG");
+}
+
 void AnnotationVisualizer::closeImg() {
     setWindowFilePath("");
     imageLabel->setPixmap(QPixmap());
@@ -720,5 +750,6 @@ void AnnotationVisualizer::instructions() {
                           "<p> 4. In Annotations menu choose which annotations should be displayed. "
                           "Annotations are displayed in heatmap colour palette where dark blue means the region was "
                           "marked by only one rater and red means it was marked by all raters."
+                          "<p> 5. Use save function (Ctrl+S) in File menu to save currently displayed image to .png file"
                        ));
 }
