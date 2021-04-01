@@ -644,7 +644,7 @@ void AnnotationVisualizer::save() {
                                  tr("Saving image failed, please try again!"));
         return;
     }
-    imageLabel->pixmap()->save(&imageFile, "PNG");
+    imageLabel->pixmap(Qt::ReturnByValue).save(&imageFile, "PNG");
 }
 
 void AnnotationVisualizer::closeImg() {
