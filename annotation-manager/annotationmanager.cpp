@@ -753,6 +753,8 @@ void AnnotationManager::closeImg() {
     loadedFileName = "";
     unsavedChanges = false;
     updateActions();
+    setLessSpAct->setText(tr("Lower (bigger regions)"));
+    setMoreSpAct->setText(tr("Higher (smaller regions)"));
 }
 
 void AnnotationManager::chooseSegmentationMethod(QAction* chooseMethodAct) {

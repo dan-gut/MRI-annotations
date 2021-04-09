@@ -228,8 +228,8 @@ void AnnotationVisualizer::updateActions() {
     displayGridAct->setEnabled(filesLoaded && gridDataAvailable);
     hideAnnotationsAct->setEnabled(filesLoaded);
 
-    imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("250"));
-    imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("500"));
+    imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("1250")); // 1000 for SPA, 1250 for KNEE
+    imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("2500"));  // 2000 for SPA, 2500 for KNEE
 }
 
 bool AnnotationVisualizer::loadFiles(const QString &fileName){
@@ -264,9 +264,9 @@ bool AnnotationVisualizer::loadFiles(const QString &fileName){
     QString spNumberVal;
 
     if (spNumber == "LOWER") {
-        spNumberVal = imageType == "SPA" ? "1000" : "250";
+        spNumberVal = imageType == "SPA" ? "1000" : "1250";  // 1000 for SPA, 1250 for KNEE
     } else {
-        spNumberVal = imageType == "SPA" ? "2000" : "500";
+        spNumberVal = imageType == "SPA" ? "2000" : "2500";  // 2000 for SPA, 2500 for KNEE
     }
 
     if (!fileDir.cd("../../segmentations/grids/"  + imageType + spNumberVal + segmentationMethod)){
@@ -335,9 +335,9 @@ bool AnnotationVisualizer::loadAnnotations(const QDir& annDir) {
 
     QString spNumberVal;
     if (spNumber == "LOWER") {
-        spNumberVal = imageType == "SPA" ? "1000" : "250";
+        spNumberVal = imageType == "SPA" ? "1000" : "1250";  // 1000 for SPA, 1250 for KNEE
     } else {
-        spNumberVal = imageType == "SPA" ? "2000" : "500";
+        spNumberVal = imageType == "SPA" ? "2000" : "2500";  // 2000 for SPA, 2500 for KNEE
     }
 
     QString fileNameToLoad;
@@ -654,6 +654,8 @@ void AnnotationVisualizer::closeImg() {
     imageLabel->setPixmap(QPixmap());
     loadedFileName = "";
     updateActions();
+    setLessSpAct->setText(tr("Lower (bigger regions)"));
+    setMoreSpAct->setText(tr("Higher (smaller regions)"));
 }
 
 void AnnotationVisualizer::chooseSegmentationMethod(QAction* chooseMethodAct) {
