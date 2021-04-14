@@ -434,6 +434,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     }
 
     loadRaw(fileName, stirData);
+    rescaleData(stirData);
 
     QString spNumberVal;
 
@@ -473,19 +474,19 @@ bool AnnotationManager::loadFiles(const QString &fileName){
         return false;
     }
 
-    if (!fileDir.mkpath("../../annotations/sp/" + imageType + spNumberVal + segmentationMethod)){
+    if (!fileDir.mkpath("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod)){
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Could not create annotations directory!"));
         return false;
         }
 
-    if (!fileDir.mkpath("../../annotations/manual/" + imageType + spNumberVal + segmentationMethod)){
+    if (!fileDir.mkpath("../../../annotations/manual/" + imageType + spNumberVal + segmentationMethod)){
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Could not create annotations directory!"));
         return false;
     }
 
-    fileDir.cd("../../annotations/sp/" + imageType + spNumberVal + segmentationMethod);
+    fileDir.cd("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod);
 
     spAnnFileName = fileDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
             .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
@@ -633,6 +634,23 @@ bool AnnotationManager::saveRaw(const QString &fileName, char ***dataArray) cons
     return true;
 }
 
+bool AnnotationManager::rescaleData(unsigned short ***dataArray) const {
+    unsigned short maxVal {1};
+    for (int sl_no = 0; sl_no < slicesNo; sl_no++)
+        for (int x = 0; x < imageWidth; x++)
+            for (int y = 0; y < imageHeight; y++)
+                if (maxVal < dataArray[sl_no][x][y]){ maxVal=dataArray[sl_no][x][y];}
+
+    qDebug() << maxVal;
+
+    for (int sl_no = 0; sl_no < slicesNo; sl_no++)
+        for (int x = 0; x < imageWidth; x++)
+            for (int y = 0; y < imageHeight; y++)
+                dataArray[sl_no][x][y] *= 65535 / maxVal;
+
+    return true;
+}
+
 void AnnotationManager::updateDisplay() {
     QPixmap display(imageWidth, imageHeight);
     QPainter painter(&display);
@@ -643,16 +661,10 @@ void AnnotationManager::updateDisplay() {
 
     QRgba64 colorValue = {};
 
-    unsigned short maxVal {1};
-    for (int x = 0; x < imageWidth; x++)
-        for (int y = 0; y < imageHeight; y++)
-            if (maxVal < stirData[currSlice][x][y]){ maxVal=stirData[currSlice][x][y];}
-
     unsigned short val;
     for (int x = 0; x < imageWidth; x++)
         for (int y = 0; y < imageHeight; y++) {
-            val = 65535 / maxVal * stirData[currSlice][x][y];
-            colorValue = qRgba64(val, val, val, 65535);
+            colorValue = qRgba64(stirData[currSlice][x][y], stirData[currSlice][x][y], stirData[currSlice][x][y], 65535);
             stirImage.setPixelColor(x, y, colorValue);
         }
     painter.drawImage(QPoint(0,0), stirImage);

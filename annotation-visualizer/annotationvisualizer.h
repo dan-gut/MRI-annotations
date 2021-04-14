@@ -49,6 +49,7 @@ private:
     bool loadRaw(const QString &fileName, unsigned short ***dataArray) const;
     bool loadRaw(const QString &fileName, char ***dataArray) const;
     bool loadRaw(const QString &fileName, bool ***dataArray) const;
+    bool rescaleData(unsigned short ***dataArray) const;
 
     void updateDisplay();
     void scaleImage(double factor);

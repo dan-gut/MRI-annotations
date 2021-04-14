@@ -469,6 +469,23 @@ bool AnnotationVisualizer::loadRaw(const QString &fileName, bool ***dataArray) c
     return true;
 }
 
+bool AnnotationVisualizer::rescaleData(unsigned short ***dataArray) const {
+    unsigned short maxVal {1};
+    for (int sl_no = 0; sl_no < slicesNo; sl_no++)
+        for (int x = 0; x < imageWidth; x++)
+            for (int y = 0; y < imageHeight; y++)
+                if (maxVal < dataArray[sl_no][x][y]){ maxVal=dataArray[sl_no][x][y];}
+
+    qDebug() << maxVal;
+
+    for (int sl_no = 0; sl_no < slicesNo; sl_no++)
+        for (int x = 0; x < imageWidth; x++)
+            for (int y = 0; y < imageHeight; y++)
+                dataArray[sl_no][x][y] *= 65535 / maxVal;
+
+    return true;
+}
+
 void AnnotationVisualizer::updateDisplay() {
     QPixmap display(imageWidth, imageHeight);
     QPainter painter(&display);
