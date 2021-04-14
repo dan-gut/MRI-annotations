@@ -641,8 +641,6 @@ bool AnnotationManager::rescaleData(unsigned short ***dataArray) const {
             for (int y = 0; y < imageHeight; y++)
                 if (maxVal < dataArray[sl_no][x][y]){ maxVal=dataArray[sl_no][x][y];}
 
-    qDebug() << maxVal;
-
     for (int sl_no = 0; sl_no < slicesNo; sl_no++)
         for (int x = 0; x < imageWidth; x++)
             for (int y = 0; y < imageHeight; y++)
@@ -661,7 +659,6 @@ void AnnotationManager::updateDisplay() {
 
     QRgba64 colorValue = {};
 
-    unsigned short val;
     for (int x = 0; x < imageWidth; x++)
         for (int y = 0; y < imageHeight; y++) {
             colorValue = qRgba64(stirData[currSlice][x][y], stirData[currSlice][x][y], stirData[currSlice][x][y], 65535);

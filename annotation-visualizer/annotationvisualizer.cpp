@@ -260,6 +260,7 @@ bool AnnotationVisualizer::loadFiles(const QString &fileName){
     }
 
     loadRaw(fileName, stirData);
+    rescaleData(stirData);
 
     QString spNumberVal;
 
@@ -476,8 +477,6 @@ bool AnnotationVisualizer::rescaleData(unsigned short ***dataArray) const {
             for (int y = 0; y < imageHeight; y++)
                 if (maxVal < dataArray[sl_no][x][y]){ maxVal=dataArray[sl_no][x][y];}
 
-    qDebug() << maxVal;
-
     for (int sl_no = 0; sl_no < slicesNo; sl_no++)
         for (int x = 0; x < imageWidth; x++)
             for (int y = 0; y < imageHeight; y++)
@@ -496,16 +495,9 @@ void AnnotationVisualizer::updateDisplay() {
 
     QRgba64 colorValue = {};
 
-    unsigned short maxVal {1};
-    for (int x = 0; x < imageWidth; x++)
-        for (int y = 0; y < imageHeight; y++)
-            if (maxVal < stirData[currSlice][x][y]){ maxVal=stirData[currSlice][x][y];}
-
-    unsigned short val;
     for (int x = 0; x < imageWidth; x++)
         for (int y = 0; y < imageHeight; y++) {
-            val = 65535 / maxVal * stirData[currSlice][x][y];
-            colorValue = qRgba64(val, val, val, 65535);
+            colorValue = qRgba64(stirData[currSlice][x][y], stirData[currSlice][x][y], stirData[currSlice][x][y], 65535);
             stirImage.setPixelColor(x, y, colorValue);
         }
     painter.drawImage(QPoint(0,0), stirImage);
