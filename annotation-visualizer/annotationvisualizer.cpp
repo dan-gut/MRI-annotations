@@ -605,7 +605,7 @@ void AnnotationVisualizer::updateDisplay() {
 }
 
 void AnnotationVisualizer::open() {
-    QFileDialog dialog(this, tr("Open File"));
+    QFileDialog dialog(this, tr("Open image"));
     static bool firstDialog = true;
     static QDir lastFileDir;
 

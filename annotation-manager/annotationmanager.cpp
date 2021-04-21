@@ -17,6 +17,7 @@
 #include <QScrollBar>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QSplitter>
 
 #include <iostream>
 #include <fstream>
@@ -26,8 +27,8 @@
 
 
 AnnotationManager::AnnotationManager(QWidget *parent)
-        : QMainWindow(parent), imageLabel(new QLabel)
-        , scrollArea(new QScrollArea)
+        : QMainWindow(parent), imageLabel(new QLabel), comparisonImageLabel(new QLabel)
+        , scrollArea(new QScrollArea), comparisonScrollArea(new QScrollArea), splitter(new QSplitter)
 {
     imageLabel->setBackgroundRole(QPalette::Base);
     imageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
@@ -36,7 +37,20 @@ AnnotationManager::AnnotationManager(QWidget *parent)
     scrollArea->setBackgroundRole(QPalette::Dark);
     scrollArea->setWidget(imageLabel);
     scrollArea->setVisible(false);
-    setCentralWidget(scrollArea);
+
+    splitter->addWidget(scrollArea);
+
+    comparisonImageLabel->setBackgroundRole(QPalette::Base);
+    comparisonImageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    comparisonImageLabel->setScaledContents(true);
+
+    comparisonScrollArea->setBackgroundRole(QPalette::Dark);
+    comparisonScrollArea->setWidget(comparisonImageLabel);
+    comparisonScrollArea->setVisible(false);
+
+    splitter->addWidget(comparisonScrollArea);
+
+    setCentralWidget(splitter);
 
     createActions();
 
@@ -44,7 +58,7 @@ AnnotationManager::AnnotationManager(QWidget *parent)
 }
 
 AnnotationManager::~AnnotationManager() {
-    if (imageHeight != 0 && imageWidth != 0 && slicesNo != 0) {
+    if (imageHeight != 0 && imageWidth != 0 && slicesNo != 0) {  // check if any file was ever loaded
         for (int i = 0; i < slicesNo; i++) {
             for (int j = 0; j < imageWidth; j++) {
                 delete[] stirData[i][j];
@@ -52,39 +66,40 @@ AnnotationManager::~AnnotationManager() {
             delete[] stirData[i];
         }
         delete[] stirData;
-    }
 
-    for (int i = 0; i < slicesNo; i++) {
-        for (int j = 0; j < imageWidth; j++) {
-            delete[] spData[i][j];
+        for (int i = 0; i < slicesNo; i++) {
+            for (int j = 0; j < imageWidth; j++) {
+                delete[] spData[i][j];
+            }
+            delete[] spData[i];
         }
-        delete[] spData[i];
-    }
-    delete[] spData;
+        delete[] spData;
 
-    for (int i = 0; i < slicesNo; i++) {
-        for (int j = 0; j < imageWidth; j++) {
-            delete[] spAnnotationData[i][j];
+        for (int i = 0; i < slicesNo; i++) {
+            for (int j = 0; j < imageWidth; j++) {
+                delete[] spAnnotationData[i][j];
+            }
+            delete[] spAnnotationData[i];
         }
-        delete[] spAnnotationData[i];
-    }
-    delete[] spAnnotationData;
+        delete[] spAnnotationData;
 
-    for (int i = 0; i < slicesNo; i++) {
-        for (int j = 0; j < imageWidth; j++) {
-            delete[] manualCorrectionsData[i][j];
+        for (int i = 0; i < slicesNo; i++) {
+            for (int j = 0; j < imageWidth; j++) {
+                delete[] manualCorrectionsData[i][j];
+            }
+            delete[] manualCorrectionsData[i];
         }
-        delete[] manualCorrectionsData[i];
-    }
-    delete[] manualCorrectionsData;
+        delete[] manualCorrectionsData;
 
-    for (int i = 0; i < slicesNo; i++) {
-        for (int j = 0; j < imageWidth; j++) {
-            delete[] gridData[i][j];
+        for (int i = 0; i < slicesNo; i++) {
+            for (int j = 0; j < imageWidth; j++) {
+                delete[] gridData[i][j];
+            }
+            delete[] gridData[i];
         }
-        delete[] gridData[i];
+        delete[] gridData;
     }
-    delete[] gridData;
+    removeComparisonFiles();
 }
 
 void AnnotationManager::createActions() {
@@ -133,6 +148,12 @@ void AnnotationManager::createActions() {
     spNumberChoiceGroup->addAction(setMoreSpAct);
 
     connect(spNumberChoiceGroup, SIGNAL(triggered(QAction*)), SLOT(chooseSPNumber(QAction*)));
+
+    fileMenu->addSeparator();
+
+    openComparisonImgAct = fileMenu->addAction(tr("&Open additional comparison file"),
+                                               this, &AnnotationManager::openComparisonImg);
+    openComparisonImgAct->setEnabled(false);
 
     fileMenu->addSeparator();
 
@@ -189,6 +210,12 @@ void AnnotationManager::createActions() {
     displayAnnotationsAct->setShortcut(Qt::Key_A);
     displayAnnotationsAct->setEnabled(false);
 
+    viewMenu->addSeparator();
+
+    nextComparisonImageAct = viewMenu->addAction(tr("Next &comparison image"), this, &AnnotationManager::nextComparisonImage);
+    nextComparisonImageAct->setShortcut(Qt::Key_C);
+    nextComparisonImageAct->setEnabled(false);
+
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
 
     helpMenu->addAction(tr("&Instructions"), this, &AnnotationManager::instructions);
@@ -197,6 +224,7 @@ void AnnotationManager::createActions() {
 void AnnotationManager::updateActions() {
     bool filesLoaded = loadedFileName != "";
     saveAct->setEnabled(filesLoaded);
+    openComparisonImgAct->setEnabled(filesLoaded);
     closeImgAct->setEnabled(filesLoaded);
     normalSizeAct->setEnabled(filesLoaded);
     resetAnnotationsAct->setEnabled(filesLoaded);
@@ -209,15 +237,21 @@ void AnnotationManager::updateActions() {
     previousSliceAct->setEnabled(filesLoaded);
     displayGridAct->setEnabled(filesLoaded);
     displayAnnotationsAct->setEnabled(filesLoaded);
+    nextComparisonImageAct->setEnabled(!comparisonData.isEmpty());
 
-    imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("1250")); // 1000 for SPA, 1250 for KNEE
-    imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("2500")); // 2000 for SPA, 2500 for KNEE
+    if(filesLoaded) {
+        imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("1250")); // 1000 for SPA, 1250 for KNEE
+        imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("2500")); // 2000 for SPA, 2500 for KNEE
+    } else {
+        setLessSpAct->setText(tr("Lower (bigger regions)"));
+        setMoreSpAct->setText(tr("Higher (smaller regions)"));
+    }
 }
 
 void AnnotationManager::mousePressEvent(QMouseEvent *event) {
     if (loadedFileName == ""){return;}
     //position relative to scrollArea beginning, regardless current scrollbars position
-    QPoint position =  mapToGlobal(event->pos()) - mapToGlobal(imageLabel->pos()) - scrollArea->pos();
+    QPoint position =  mapToGlobal(event->pos()) - mapToGlobal(imageLabel->pos()) - splitter->pos();
     position.setX(static_cast<int>(position.x()/scaleFactor));
     position.setY(static_cast<int>(position.y()/scaleFactor));
     if (event->buttons() == Qt::LeftButton) {
@@ -242,7 +276,7 @@ void AnnotationManager::mousePressEvent(QMouseEvent *event) {
 void AnnotationManager::mouseMoveEvent(QMouseEvent *event) {
     if (loadedFileName == ""){return;}
     //position relative to scrollArea beginning, regardless current scrollbars position
-    QPoint position =  mapToGlobal(event->pos()) - mapToGlobal(imageLabel->pos()) - scrollArea->pos();
+    QPoint position =  mapToGlobal(event->pos()) - mapToGlobal(imageLabel->pos()) - splitter->pos();
     position.setX(static_cast<int>(position.x()/scaleFactor));
     position.setY(static_cast<int>(position.y()/scaleFactor));
     if ((event->buttons() & Qt::LeftButton) && clickedLeft) {
@@ -263,7 +297,7 @@ void AnnotationManager::mouseMoveEvent(QMouseEvent *event) {
 void AnnotationManager::mouseReleaseEvent(QMouseEvent *event) {
     if (loadedFileName == ""){return;}
     //position relative to scrollArea beginning, regardless current scrollbars position
-    QPoint position =  mapToGlobal(event->pos()) - mapToGlobal(imageLabel->pos()) - scrollArea->pos();
+    QPoint position =  mapToGlobal(event->pos()) - mapToGlobal(imageLabel->pos()) - splitter->pos();
     position.setX(static_cast<int>(position.x()/scaleFactor));
     position.setY(static_cast<int>(position.y()/scaleFactor));
     if ((event->buttons() == Qt::LeftButton) && clickedLeft) {
@@ -617,6 +651,29 @@ bool AnnotationManager::loadRaw(const QString &fileName, bool ***dataArray) cons
     return true;
 }
 
+bool AnnotationManager::loadComparisonFile(const QString &fileName) {
+    auto ***currImageData = new unsigned short **[slicesNo];
+    for (int i = 0; i < slicesNo; i++) {
+        currImageData[i] = new unsigned short *[imageWidth];
+
+        for (int j = 0; j < imageWidth; j++)
+            currImageData[i][j] = new unsigned short [imageHeight];
+    }
+
+    if (!loadRaw(fileName, currImageData)) {return false;}
+
+    rescaleData(currImageData);
+
+    comparisonData.append(currImageData);
+
+    comparisonFileNo = comparisonData.size()-1;
+
+    updateActions();
+    updateDisplay();
+
+    return true;
+}
+
 bool AnnotationManager::saveRaw(const QString &fileName, char ***dataArray) const {
     std::ofstream imageFileStream;
     imageFileStream.open(fileName.toStdString(), std::ios::binary);
@@ -696,16 +753,42 @@ void AnnotationManager::updateDisplay() {
 
     int horizontalScrollValue = scrollArea->horizontalScrollBar()->value();
     int verticalScrollValue = scrollArea->verticalScrollBar()->value();
+
     imageLabel->setPixmap(display);
     scrollArea->setVisible(true);
     imageLabel->adjustSize();
-    scaleImage(1);
     scrollArea->horizontalScrollBar()->setValue(horizontalScrollValue);
     scrollArea->verticalScrollBar()->setValue(verticalScrollValue);
+
+    if(comparisonFileNo > -1) {
+        QPixmap comparisonDisplay(imageWidth, imageHeight);
+        QPainter comparisonPainter(&comparisonDisplay);
+        QImage comparisonImage (imageWidth, imageHeight, QImage::Format_RGBA64);
+
+        for (int x = 0; x < imageWidth; x++)
+            for (int y = 0; y < imageHeight; y++) {
+                unsigned short val = comparisonData[comparisonFileNo][currSlice][x][y];
+                colorValue = qRgba64(val, val, val, 65535);
+                comparisonImage.setPixelColor(x, y, colorValue);
+            }
+
+        comparisonPainter.drawImage(QPoint(0,0), comparisonImage);
+        comparisonPainter.end();
+
+        comparisonImageLabel->setPixmap(comparisonDisplay);
+        comparisonScrollArea->setVisible(true);
+        comparisonImageLabel->adjustSize();
+        comparisonScrollArea->horizontalScrollBar()->setValue(horizontalScrollValue);
+        comparisonScrollArea->verticalScrollBar()->setValue(verticalScrollValue);
+    } else {;
+        comparisonScrollArea->setVisible(false);
+    }
+
+    scaleImages(1);
 }
 
 void AnnotationManager::open() {
-    QFileDialog dialog(this, tr("Open File"));
+    QFileDialog dialog(this, tr("Open image"));
     static bool firstDialog = true;
     static QDir lastFileDir;
 
@@ -723,6 +806,40 @@ void AnnotationManager::open() {
 
     while (dialog.exec() == QDialog::Accepted) {
         loaded = loadFiles(dialog.selectedFiles().first());
+        if(loaded) {break;}
+    }
+
+    if (loaded) {
+        lastFileDir = QFileInfo(dialog.selectedFiles().first()).absoluteDir();
+        loadedFileSize = QFileInfo(dialog.selectedFiles().first()).size();
+    }
+}
+
+void AnnotationManager::openComparisonImg() {
+    QFileDialog dialog(this, tr("Open additional image for comparison"));
+    static bool firstDialog = true;
+    static QDir lastFileDir;
+
+    if (firstDialog) {
+        firstDialog = false;
+        const QStringList picturesLocations = QStandardPaths::standardLocations(QStandardPaths::PicturesLocation);
+        dialog.setDirectory(picturesLocations.isEmpty() ? QDir::currentPath() : picturesLocations.last());
+    } else {
+        dialog.setDirectory(lastFileDir);
+    }
+
+    dialog.setNameFilter("RAW files (*.raw)");
+
+    bool loaded = false;
+
+    while (dialog.exec() == QDialog::Accepted) {
+        if(QFileInfo(dialog.selectedFiles().first()).size() == loadedFileSize) {
+            loaded = loadComparisonFile(dialog.selectedFiles().first());
+        } else {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Chosen comparison image file size does not match the size of main image! "
+                                        "Please try again."));
+        }
         if(loaded) {break;}
     }
 
@@ -759,11 +876,34 @@ void AnnotationManager::closeImg() {
     }
     setWindowFilePath("");
     imageLabel->setPixmap(QPixmap());
+    scrollArea->setVisible(false);
+
     loadedFileName = "";
+    loadedFileSize = 0;
     unsavedChanges = false;
     updateActions();
-    setLessSpAct->setText(tr("Lower (bigger regions)"));
-    setMoreSpAct->setText(tr("Higher (smaller regions)"));
+
+    removeComparisonFiles();
+    comparisonImageLabel->setPixmap(QPixmap());
+    comparisonScrollArea->setVisible(false);
+}
+
+void AnnotationManager::removeComparisonFiles() {
+    for (auto*** currImageData : comparisonData) {
+        for (int i = 0; i < slicesNo; i++) {
+            for (int j = 0; j < imageWidth; j++) {
+                delete[] currImageData[i][j];
+            }
+            delete[] currImageData[i];
+        }
+        delete[] currImageData;
+    }
+
+    while(!comparisonData.isEmpty()) {
+        comparisonData.removeLast();
+    }
+
+    comparisonFileNo = -1;
 }
 
 void AnnotationManager::chooseSegmentationMethod(QAction* chooseMethodAct) {
@@ -828,24 +968,26 @@ void AnnotationManager::reduceManualPenSize() {
 
 void AnnotationManager::zoomIn()
 {
-    scaleImage(1.25);
+    scaleImages(1.25);
 }
 
 void AnnotationManager::zoomOut()
 {
-    scaleImage(0.8);
+    scaleImages(0.8);
 }
 
 void AnnotationManager::resetSize()
 {
     imageLabel->adjustSize();
+    comparisonImageLabel->adjustSize();
     scaleFactor = 1.0;
 }
 
-void AnnotationManager::scaleImage(double factor)
+void AnnotationManager::scaleImages(double factor)
 {
     scaleFactor *= factor;
     imageLabel->resize(scaleFactor * imageLabel->pixmap(Qt::ReturnByValue).size());
+    comparisonImageLabel->resize(scaleFactor * comparisonImageLabel->pixmap(Qt::ReturnByValue).size());
 
     adjustScrollBar(scrollArea->horizontalScrollBar(), factor);
     adjustScrollBar(scrollArea->verticalScrollBar(), factor);
@@ -879,6 +1021,13 @@ void AnnotationManager::changeDisplayAnnotations() {
     updateDisplay();
 }
 
+void AnnotationManager::nextComparisonImage() {
+    if(comparisonData.size() > 1) {
+        comparisonFileNo = (comparisonFileNo + 1) % comparisonData.size();
+        updateDisplay();
+    }
+}
+
 void AnnotationManager::instructions() {
     QMessageBox::about(this, tr("Instructions"),
                        tr("<p><b>Instructions:</b></p>"
@@ -893,5 +1042,7 @@ void AnnotationManager::instructions() {
                           "You can adjust size of correction pen in Edit menu (or using Ctrl+Shift++/Ctrl+Shift+-).</p>"
                           "<p>6. Remember to save annotations once you finish your work in File menu (Ctrl+S)."
                           "Annotations for all slices are saved at once. </p>"
+                          "<p>7. You can load any number of additional images in File menu. "
+                          "To switch to next image press C or choose proper option in View menu. </p>"
                           ));
 }

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QImage>
 #include <QCloseEvent>
+#include <QSplitter>
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -24,6 +25,7 @@ public:
 
 private slots:
     void open();
+    void openComparisonImg();
     void save();
     void closeImg();
     void chooseSegmentationMethod(QAction* chooseMethodAct);
@@ -39,6 +41,7 @@ private slots:
     void previousSlice();
     void changeDisplayGrid();
     void changeDisplayAnnotations();
+    void nextComparisonImage();
     void instructions();
     // TODO findMissingAnnotations() - method to find numbers of patients for which annotations have not been done yet
 
@@ -59,12 +62,15 @@ private:
     bool loadRaw(const QString &fileName, unsigned short ***dataArray) const;
     bool loadRaw(const QString &fileName, char ***dataArray) const;
     bool loadRaw(const QString &fileName, bool ***dataArray) const;
+    bool loadComparisonFile(const QString &fileName);
     bool saveRaw(const QString &fileName, char ***dataArray) const;
     bool rescaleData(unsigned short ***dataArray) const;
 
     void updateDisplay();
-    void scaleImage(double factor);
+    void scaleImages(double factor);
     static void adjustScrollBar(QScrollBar *scrollBar, double factor);
+
+    void removeComparisonFiles();
 
     unsigned short ***stirData;
     unsigned short ***spData;
@@ -72,9 +78,13 @@ private:
     char ***spAnnotationData; // sp annotation is 0 (no lesion) or 1 (lesion)
     char ***manualCorrectionsData; // manual correction is -1 (remove from annotation), 0 (do nothing) or 1 (add to annotation)
 
+    QList<unsigned short***> comparisonData;
+    int comparisonFileNo = -1;
+
     QString spAnnFileName;
     QString manualCorrFileName;
     QString loadedFileName = "";
+    qint64 loadedFileSize = 0;
     QString imageType;
     QString segmentationMethod = "LSC";
     QString spNumber = "LOWER";
@@ -98,8 +108,12 @@ private:
 
     QLabel *imageLabel;
     QScrollArea *scrollArea;
+    QLabel *comparisonImageLabel;
+    QScrollArea *comparisonScrollArea;
+    QSplitter* splitter;
 
     QAction *saveAct;
+    QAction *openComparisonImgAct;
     QAction *closeImgAct;
     QActionGroup *segMethodChoiceGroup;
     QActionGroup *spNumberChoiceGroup;
@@ -116,6 +130,7 @@ private:
     QAction *previousSliceAct;
     QAction *displayGridAct;
     QAction *displayAnnotationsAct;
+    QAction *nextComparisonImageAct;
 };
 
 #endif
