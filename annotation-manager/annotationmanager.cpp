@@ -131,6 +131,11 @@ void AnnotationManager::createActions() {
     setTPSAct->setCheckable(true);
     segMethodChoiceGroup->addAction(setTPSAct);
 
+    QAction *setManualAct = segMethodMenu->addAction(tr("Manual"));
+    setManualAct->setData("MANUAL");
+    setManualAct->setCheckable(true);
+    segMethodChoiceGroup->addAction(setManualAct);
+
     connect(segMethodChoiceGroup, SIGNAL(triggered(QAction*)), SLOT(chooseSegmentationMethod(QAction*)));
 
     QMenu *spNumberMenu = fileMenu->addMenu(tr("&Number of superpixels"));
@@ -228,7 +233,8 @@ void AnnotationManager::updateActions() {
     closeImgAct->setEnabled(filesLoaded);
     normalSizeAct->setEnabled(filesLoaded);
     resetAnnotationsAct->setEnabled(filesLoaded);
-    changeAnnotationsModeAct->setEnabled(filesLoaded);
+    if (segmentationMethod != "MANUAL") {changeAnnotationsModeAct->setEnabled(filesLoaded);}
+    else {changeAnnotationsModeAct->setEnabled(false);}
     increaseManualPenSizeAct->setEnabled(manualCorrectionsMode);
     reduceManualPenSizeAct->setEnabled(manualCorrectionsMode);
     zoomInAct->setEnabled(filesLoaded);
@@ -470,88 +476,121 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     loadRaw(fileName, stirData);
     rescaleData(stirData);
 
-    QString spNumberVal;
+    if (segmentationMethod != "MANUAL") {
+        QString spNumberVal;
 
-    if (spNumber == "LOWER") {
-        spNumberVal = imageType == "SPA" ? "1000" : "1250"; // 1000 for SPA, 1250 for KNEE
-    } else {
-        spNumberVal = imageType == "SPA" ? "2000" : "2500"; // 2000 for SPA, 2500 for KNEE
-    }
-
-    if (!fileDir.cd("../../segmentations/superpixels/" + imageType + spNumberVal + segmentationMethod)){
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find %0 segmentation data for %1 with %2 superpixels!")
-                                 .arg(segmentationMethod).arg(imageType).arg(spNumberVal));
-        return false;
-    }
-
-    if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0SuperPixel%1_%2_%3_%4_%5_2_.raw")
-    .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), spData)) {
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find segmentation data! "
-                                    "Please make sure it is available and load the file again."));
-        return false;
-    }
-
-    if (!fileDir.cd("../../grids/"  + imageType + spNumberVal + segmentationMethod)){
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find %0 grid data for %1 with %2 superpixels!")
-                                         .arg(segmentationMethod).arg(imageType).arg(spNumberVal));
-        return false;
-    }
-
-    if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw")
-    .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Cannot find grid data! "
-                                    "Please make sure it is available and load the file again."));
-        return false;
-    }
-
-    if (!fileDir.mkpath("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod)){
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Could not create annotations directory!"));
-        return false;
+        if (spNumber == "LOWER") {
+            spNumberVal = imageType == "SPA" ? "1000" : "1250"; // 1000 for SPA, 1250 for KNEE
+        } else {
+            spNumberVal = imageType == "SPA" ? "2000" : "2500"; // 2000 for SPA, 2500 for KNEE
         }
 
-    if (!fileDir.mkpath("../../../annotations/manual/" + imageType + spNumberVal + segmentationMethod)){
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Could not create annotations directory!"));
-        return false;
-    }
+        if (!fileDir.cd("../../segmentations/superpixels/" + imageType + spNumberVal + segmentationMethod)) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Cannot find %0 segmentation data for %1 with %2 superpixels!")
+                                             .arg(segmentationMethod).arg(imageType).arg(spNumberVal));
+            return false;
+        }
 
-    fileDir.cd("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod);
+        if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0SuperPixel%1_%2_%3_%4_%5_2_.raw")
+                             .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo),
+                     spData)) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Cannot find segmentation data! "
+                                        "Please make sure it is available and load the file again."));
+            return false;
+        }
 
-    spAnnFileName = fileDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
-            .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+        if (!fileDir.cd("../../grids/" + imageType + spNumberVal + segmentationMethod)) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Cannot find %0 grid data for %1 with %2 superpixels!")
+                                             .arg(segmentationMethod).arg(imageType).arg(spNumberVal));
+            return false;
+        }
 
-    if(QFileInfo::exists(spAnnFileName))
-    {
-        loadRaw(spAnnFileName, spAnnotationData);
+        if (!loadRaw(fileDir.path() + QString(QDir::separator()) + QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw")
+                             .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo),
+                     gridData)) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Cannot find grid data! "
+                                        "Please make sure it is available and load the file again."));
+            return false;
+        }
+
+        if (!fileDir.mkpath("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod)) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Could not create annotations directory!"));
+            return false;
+        }
+
+        if (!fileDir.mkpath("../../../annotations/manual/" + imageType + spNumberVal + segmentationMethod)) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Could not create annotations directory!"));
+            return false;
+        }
+
+        fileDir.cd("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod);
+
+        spAnnFileName = fileDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
+                .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+
+        if (QFileInfo::exists(spAnnFileName)) {
+            loadRaw(spAnnFileName, spAnnotationData);
+        } else {
+            for (int sl_no = 0; sl_no < slicesNo; sl_no++)
+                for (int y = 0; y < imageHeight; y++)
+                    for (int x = 0; x < imageWidth; x++) {
+                        spAnnotationData[sl_no][x][y] = 0;
+                    }
+        }
+
+        fileDir.cd("../../manual/" + imageType + spNumberVal + segmentationMethod);
+
+
+        manualCorrFileName =
+                fileDir.path() + QString(QDir::separator()) + QString("%0manualAnnotations%1_%2_%3_%4_%5_1_.raw")
+                        .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(
+                        slicesNo);
+
+        if (QFileInfo::exists(manualCorrFileName)) {
+            loadRaw(manualCorrFileName, manualCorrectionsData);
+        } else {
+            for (int sl_no = 0; sl_no < slicesNo; sl_no++)
+                for (int y = 0; y < imageHeight; y++)
+                    for (int x = 0; x < imageWidth; x++) {
+                        manualCorrectionsData[sl_no][x][y] = 0;
+                    }
+        }
     } else {
+        fileDir.cd("../../");
+        if (!fileDir.mkpath("annotations/manual/" + imageType + "MANUAL")) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Could not create annotations directory!"));
+            return false;
+        }
+        fileDir.cd("annotations/manual/" + imageType + "MANUAL");
+
+        manualCorrFileName =
+                fileDir.path() + QString(QDir::separator()) + QString("0manualAnnotationsMANUAL%1_%2_%3_%4_1_.raw")
+                        .arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+
+        if (QFileInfo::exists(manualCorrFileName)) {
+            loadRaw(manualCorrFileName, manualCorrectionsData);
+        } else {
+            for (int sl_no = 0; sl_no < slicesNo; sl_no++)
+                for (int y = 0; y < imageHeight; y++)
+                    for (int x = 0; x < imageWidth; x++) {
+                        manualCorrectionsData[sl_no][x][y] = 0;
+                    }
+        }
+
         for (int sl_no = 0; sl_no < slicesNo; sl_no++)
             for (int y = 0; y < imageHeight; y++)
                 for (int x = 0; x < imageWidth; x++) {
                     spAnnotationData[sl_no][x][y] = 0;
                 }
-        saveRaw(spAnnFileName, spAnnotationData);
-    }
 
-    fileDir.cd("../../manual/" + imageType + spNumberVal + segmentationMethod);
-
-    manualCorrFileName = fileDir.path() + QString(QDir::separator()) + QString("%0manualAnnotations%1_%2_%3_%4_%5_1_.raw")
-            .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
-
-    if(QFileInfo::exists(manualCorrFileName))
-    {
-        loadRaw(manualCorrFileName, manualCorrectionsData);
-    } else {
-        for (int sl_no = 0; sl_no < slicesNo; sl_no++)
-            for (int y = 0; y < imageHeight; y++)
-                for (int x = 0; x < imageWidth; x++) {
-                    manualCorrectionsData[sl_no][x][y] = 0;
-                }
-        saveRaw(manualCorrFileName, manualCorrectionsData);
+        manualCorrectionsMode = true;
     }
 
     currSlice = 0;
@@ -849,17 +888,20 @@ void AnnotationManager::openComparisonImg() {
 }
 
 void AnnotationManager::save() {
-    if (!saveRaw(spAnnFileName, spAnnotationData)) {
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("Could not save annotations, please try again."));
+    if (segmentationMethod != "MANUAL") {
+        if (!saveRaw(spAnnFileName, spAnnotationData)) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Could not save annotations, please try again."));
+            return;
+        }
     }
     if (!saveRaw(manualCorrFileName, manualCorrectionsData)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Could not save annotations, please try again."));
+        return;
     }
 
     statusBar()->showMessage(tr("Annotations have been saved!"));
-
     unsavedChanges = false;
 }
 
@@ -1038,11 +1080,12 @@ void AnnotationManager::instructions() {
                           "<p>3. Use left mouse button to mark new region as a lesion.</p>"
                           "<p>4. Use right mouse button to remove part of annotation.</p>"
                           "<p>5. To make corrections turn on manual corrections mode (M key). "
+                          "This mode is permanently turned on if Manual segmentation method is chosen "
                           "It allows to make annotations regardless image segmentation. "
                           "You can adjust size of correction pen in Edit menu (or using Ctrl+Shift++/Ctrl+Shift+-).</p>"
                           "<p>6. Remember to save annotations once you finish your work in File menu (Ctrl+S)."
                           "Annotations for all slices are saved at once. </p>"
-                          "<p>7. You can load any number of additional images in File menu. "
+                          "<p>7. You can load any number of additional images for comparison in File menu. "
                           "To switch to next image press C or choose proper option in View menu. </p>"
                           ));
 }
