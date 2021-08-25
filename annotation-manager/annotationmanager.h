@@ -41,6 +41,7 @@ private slots:
     void previousSlice();
     void changeDisplayGrid();
     void changeDisplayAnnotations();
+    void changeDisplayFrame();
     void nextComparisonImage();
     void instructions();
     // TODO findMissingAnnotations() - method to find numbers of patients for which annotations have not been done yet
@@ -62,6 +63,7 @@ private:
     bool loadRaw(const QString &fileName, unsigned short ***dataArray) const;
     bool loadRaw(const QString &fileName, char ***dataArray) const;
     bool loadRaw(const QString &fileName, bool ***dataArray) const;
+    bool loadFrame(const QString &fileName);
     bool loadComparisonFile(const QString &fileName);
     bool saveRaw(const QString &fileName, char ***dataArray) const;
     bool rescaleData(unsigned short ***dataArray) const;
@@ -77,6 +79,7 @@ private:
     bool ***gridData;
     char ***spAnnotationData; // sp annotation is 0 (no lesion) or 1 (lesion)
     char ***manualCorrectionsData; // manual correction is -1 (remove from annotation), 0 (do nothing) or 1 (add to annotation)
+    QMap<int, QMap<int, QList<QPoint>>> frameData;
 
     QList<unsigned short***> comparisonData;
     int comparisonFileNo = -1;
@@ -89,6 +92,7 @@ private:
     QString segmentationMethod = "LSC";
     QString spNumber = "LOWER";
 
+    int patientNo {};
     int imageWidth {};
     int imageHeight {};
     int slicesNo {};
@@ -97,6 +101,7 @@ private:
     int currSlice = 0;
     bool displayGrid = false;
     bool displayAnnotations = true;
+    bool displayFrame = true;
     bool manualCorrectionsMode = false;
 
     bool unsavedChanges = false;
@@ -130,6 +135,7 @@ private:
     QAction *previousSliceAct;
     QAction *displayGridAct;
     QAction *displayAnnotationsAct;
+    QAction *displayFrameAct;
     QAction *nextComparisonImageAct;
 };
 

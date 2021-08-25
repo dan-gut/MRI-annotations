@@ -103,7 +103,7 @@ AnnotationManager::~AnnotationManager() {
 }
 
 void AnnotationManager::createActions() {
-    QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
+    QMenu *fileMenu = menuBar()->addMenu(tr("Fi&le"));
 
     QAction *openAct = fileMenu->addAction(tr("&Open"), this, &AnnotationManager::open);
     openAct->setShortcut(QKeySequence::Open);
@@ -176,11 +176,11 @@ void AnnotationManager::createActions() {
     changeAnnotationsModeAct->setEnabled(false);
 
     increaseManualPenSizeAct = editMenu->addAction(tr("&Increase manual correction pen size"), this, &AnnotationManager::increaseManualPenSize);
-    increaseManualPenSizeAct->setShortcut(tr("Ctrl+Shift++"));
+    increaseManualPenSizeAct->setShortcut(Qt::Key_N);
     increaseManualPenSizeAct->setEnabled(false);
 
     reduceManualPenSizeAct = editMenu->addAction(tr("R&educe manual correction pen size"), this, &AnnotationManager::reduceManualPenSize);
-    reduceManualPenSizeAct->setShortcut(tr("Ctrl+Shift+-"));
+    reduceManualPenSizeAct->setShortcut(Qt::Key_B);
     reduceManualPenSizeAct->setEnabled(false);
 
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
@@ -215,6 +215,10 @@ void AnnotationManager::createActions() {
     displayAnnotationsAct->setShortcut(Qt::Key_A);
     displayAnnotationsAct->setEnabled(false);
 
+    displayFrameAct = viewMenu->addAction(tr("Display &frame"), this, &AnnotationManager::changeDisplayFrame);
+    displayFrameAct->setShortcut(Qt::Key_F);
+    displayFrameAct->setEnabled(false);
+
     viewMenu->addSeparator();
 
     nextComparisonImageAct = viewMenu->addAction(tr("Next &comparison image"), this, &AnnotationManager::nextComparisonImage);
@@ -243,6 +247,7 @@ void AnnotationManager::updateActions() {
     previousSliceAct->setEnabled(filesLoaded);
     displayGridAct->setEnabled(filesLoaded);
     displayAnnotationsAct->setEnabled(filesLoaded);
+    displayFrameAct->setEnabled(!frameData.isEmpty());
     nextComparisonImageAct->setEnabled(!comparisonData.isEmpty());
 
     if(filesLoaded) {
@@ -428,7 +433,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
     QStringList imgParams=fileInfo.fileName().split("_");
 
     imageType = imgParams[imgParams.size()-7];
-    int patientNo = imgParams[imgParams.size()-6].toInt();
+    patientNo = imgParams[imgParams.size()-6].toInt();
     imageWidth = imgParams[imgParams.size()-5].toInt();
     imageHeight = imgParams[imgParams.size()-4].toInt();
     slicesNo = imgParams[imgParams.size()-3].toInt();
@@ -517,13 +522,20 @@ bool AnnotationManager::loadFiles(const QString &fileName){
             return false;
         }
 
-        if (!fileDir.mkpath("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod)) {
+        fileDir.cd("../..");
+
+        if (!loadFrame(fileDir.path() + QString(QDir::separator()) + QString("Frames_%0.dat").arg(imageType))) {
+            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                     tr("Could not load frame data. Frames will not be available."));
+        }
+
+        if (!fileDir.mkpath("../annotations/sp/" + imageType + spNumberVal + segmentationMethod)) {
             QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                      tr("Could not create annotations directory!"));
             return false;
         }
 
-        if (!fileDir.mkpath("../../../annotations/manual/" + imageType + spNumberVal + segmentationMethod)) {
+        if (!fileDir.mkpath("../annotations/manual/" + imageType + spNumberVal + segmentationMethod)) {
             QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                      tr("Could not create annotations directory!"));
             return false;
@@ -571,7 +583,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
         fileDir.cd("annotations/manual/" + imageType + "MANUAL");
 
         manualCorrFileName =
-                fileDir.path() + QString(QDir::separator()) + QString("0manualAnnotationsMANUAL%1_%2_%3_%4_1_.raw")
+                fileDir.path() + QString(QDir::separator()) + QString("0manualAnnotationsMANUAL_%1_%2_%3_%4_1_.raw")
                         .arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
 
         if (QFileInfo::exists(manualCorrFileName)) {
@@ -690,6 +702,24 @@ bool AnnotationManager::loadRaw(const QString &fileName, bool ***dataArray) cons
     return true;
 }
 
+bool AnnotationManager::loadFrame(const QString &fileName) {
+    QFile inputFile(fileName);
+    if (inputFile.open(QIODevice::ReadOnly)) {
+        QTextStream in(&inputFile);
+        in.readLine(); //read header
+        while (!in.atEnd())
+        {
+            QStringList line = in.readLine().split("-");
+            frameData[line[0].toInt()][line[1].toInt()] = {QPoint(line[2].toInt(), line[3].toInt()),
+                                                           QPoint(line[4].toInt(), line[5].toInt())};
+        }
+        inputFile.close();
+    } else {
+        return false;
+    }
+    return true;
+}
+
 bool AnnotationManager::loadComparisonFile(const QString &fileName) {
     auto ***currImageData = new unsigned short **[slicesNo];
     for (int i = 0; i < slicesNo; i++) {
@@ -786,6 +816,24 @@ void AnnotationManager::updateDisplay() {
                 gridImage.setPixelColor(x, y, colorValue);
             }
         painter.drawImage(QPoint(0,0), gridImage);
+    }
+
+    if(displayFrame) {
+        if(frameData.contains(patientNo)) {
+            if(frameData[patientNo].contains(currSlice)) {
+                int offset = 6;
+                int left_top_x = qMax(frameData[patientNo][currSlice][0].x() - offset, 0);
+                int left_top_y = qMax(frameData[patientNo][currSlice][0].y() - offset, 0);
+                int width = frameData[patientNo][currSlice][1].x() - frameData[patientNo][currSlice][0].x() + 2 * offset;
+                width = left_top_x + width < imageWidth ? width : imageWidth - left_top_x;
+                int height = frameData[patientNo][currSlice][1].y() - frameData[patientNo][currSlice][0].y() + 2 * offset;
+                height = left_top_y + height < imageHeight ? height : imageHeight - left_top_y;
+
+                QPen pen(Qt::magenta, 2);
+                painter.setPen(pen);
+                painter.drawRect(left_top_x, left_top_y, width, height);
+            }
+        }
     }
 
     painter.end();
@@ -1063,6 +1111,11 @@ void AnnotationManager::changeDisplayAnnotations() {
     updateDisplay();
 }
 
+void AnnotationManager::changeDisplayFrame() {
+    displayFrame = !displayFrame;
+    updateDisplay();
+}
+
 void AnnotationManager::nextComparisonImage() {
     if(comparisonData.size() > 1) {
         comparisonFileNo = (comparisonFileNo + 1) % comparisonData.size();
@@ -1082,7 +1135,8 @@ void AnnotationManager::instructions() {
                           "<p>5. To make corrections turn on manual corrections mode (M key). "
                           "This mode is permanently turned on if Manual segmentation method is chosen "
                           "It allows to make annotations regardless image segmentation. "
-                          "You can adjust size of correction pen in Edit menu (or using Ctrl+Shift++/Ctrl+Shift+-).</p>"
+                          "You can adjust size of correction pen in Edit menu "
+                          "(or using B to increase and N to reduce the size).</p>"
                           "<p>6. Remember to save annotations once you finish your work in File menu (Ctrl+S)."
                           "Annotations for all slices are saved at once. </p>"
                           "<p>7. You can load any number of additional images for comparison in File menu. "
