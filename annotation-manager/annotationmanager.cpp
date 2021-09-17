@@ -541,10 +541,14 @@ bool AnnotationManager::loadFiles(const QString &fileName){
             return false;
         }
 
-        fileDir.cd("../../../annotations/sp/" + imageType + spNumberVal + segmentationMethod);
+        fileDir.cd("../annotations/sp/" + imageType + spNumberVal + segmentationMethod);
+
+        qDebug() << fileDir.path();
 
         spAnnFileName = fileDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
                 .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+
+        qDebug() << spAnnFileName;
 
         if (QFileInfo::exists(spAnnFileName)) {
             loadRaw(spAnnFileName, spAnnotationData);
@@ -558,6 +562,7 @@ bool AnnotationManager::loadFiles(const QString &fileName){
 
         fileDir.cd("../../manual/" + imageType + spNumberVal + segmentationMethod);
 
+        qDebug() << fileDir.path();
 
         manualCorrFileName =
                 fileDir.path() + QString(QDir::separator()) + QString("%0manualAnnotations%1_%2_%3_%4_%5_1_.raw")
