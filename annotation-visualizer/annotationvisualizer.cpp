@@ -112,6 +112,11 @@ void AnnotationVisualizer::createActions() {
     setTPSAct->setCheckable(true);
     segMethodChoiceGroup->addAction(setTPSAct);
 
+    QAction *setManualAct = segMethodMenu->addAction(tr("Manual"));
+    setManualAct->setData("MANUAL");
+    setManualAct->setCheckable(true);
+    segMethodChoiceGroup->addAction(setManualAct);
+
     connect(segMethodChoiceGroup, SIGNAL(triggered(QAction*)), SLOT(chooseSegmentationMethod(QAction*)));
 
     QMenu *spNumberMenu = fileMenu->addMenu(tr("&Number of superpixels"));
@@ -174,15 +179,15 @@ void AnnotationVisualizer::createActions() {
     annotationsDisplayChoiceGroup = new QActionGroup(this);
     annotationsDisplayChoiceGroup->setExclusive(true);
 
-    QAction *setManualAct = annotationsMenu->addAction(tr("Manual corrections only"));
-    setManualAct->setData("MANUAL");
-    setManualAct->setCheckable(true);
-    annotationsDisplayChoiceGroup->addAction(setManualAct);
+    QAction *setManualOnlyAct = annotationsMenu->addAction(tr("Manual corrections only"));
+    setManualOnlyAct->setData("MANUAL");
+    setManualOnlyAct->setCheckable(true);
+    annotationsDisplayChoiceGroup->addAction(setManualOnlyAct);
 
-    QAction *setSPAct = annotationsMenu->addAction(tr("SP annotations only"));
-    setSPAct->setData("SP");
-    setSPAct->setCheckable(true);
-    annotationsDisplayChoiceGroup->addAction(setSPAct);
+    QAction *setSPOnlyAct = annotationsMenu->addAction(tr("SP annotations only"));
+    setSPOnlyAct->setData("SP");
+    setSPOnlyAct->setCheckable(true);
+    annotationsDisplayChoiceGroup->addAction(setSPOnlyAct);
 
     QAction *setBothAct = annotationsMenu->addAction(tr("Complete annotations"));
     setBothAct->setData("BOTH");
@@ -230,6 +235,8 @@ void AnnotationVisualizer::updateActions() {
 
     imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("1250")); // 1000 for SPA, 1250 for KNEE
     imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("2500"));  // 2000 for SPA, 2500 for KNEE
+
+//    if ()
 }
 
 bool AnnotationVisualizer::loadFiles(const QString &fileName){
@@ -262,35 +269,42 @@ bool AnnotationVisualizer::loadFiles(const QString &fileName){
     loadRaw(fileName, stirData);
     rescaleData(stirData);
 
-    QString spNumberVal;
+    if (segmentationMethod != "MANUAL") {
+        QString spNumberVal;
 
-    if (spNumber == "LOWER") {
-        spNumberVal = imageType == "SPA" ? "1000" : "1250";  // 1000 for SPA, 1250 for KNEE
-    } else {
-        spNumberVal = imageType == "SPA" ? "2000" : "2500";  // 2000 for SPA, 2500 for KNEE
-    }
+        if (spNumber == "LOWER") {
+            spNumberVal = imageType == "SPA" ? "1000" : "1250";  // 1000 for SPA, 1250 for KNEE
+        } else {
+            spNumberVal = imageType == "SPA" ? "2000" : "2500";  // 2000 for SPA, 2500 for KNEE
+        }
 
-    if (!fileDir.cd("../../segmentations/grids/"  + imageType + spNumberVal + segmentationMethod)){
-        QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                 tr("%0 grid data for %1 with %2 superpixels is not available. "
-                                    "Grid cannot be displayed, please provide proper file "
-                                    "and reload the image to activate this feature")
-                                         .arg(imageType).arg(segmentationMethod).arg(spNumberVal));
-        gridDataAvailable = false;
-    } else {
-        if (!loadRaw(fileDir.path() + QString(QDir::separator()) +
-                     QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw").arg(spNumberVal).arg(segmentationMethod)
-                             .arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
+        if (!fileDir.cd("../../segmentations/grids/" + imageType + spNumberVal + segmentationMethod)) {
             QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                     tr("Cannot find grid data! "
-                                        "Please make sure it is available and load the file again."));
+                                     tr("%0 grid data for %1 with %2 superpixels is not available. "
+                                        "Grid cannot be displayed, please provide proper file "
+                                        "and reload the image to activate this feature")
+                                             .arg(imageType).arg(segmentationMethod).arg(spNumberVal));
             gridDataAvailable = false;
         } else {
-            gridDataAvailable = true;
+            if (!loadRaw(fileDir.path() + QString(QDir::separator()) +
+                         QString("%0BorderSuperPixel%1_%2_%3_%4_%5_2_.raw").arg(spNumberVal).arg(segmentationMethod)
+                                 .arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo), gridData)) {
+                QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                         tr("Cannot find grid data! "
+                                            "Please make sure it is available and load the file again."));
+                gridDataAvailable = false;
+            } else {
+                gridDataAvailable = true;
+            }
         }
+        fileDir.cd("../../../annotations/");
+    } else {
+        fileDir.cd("../../annotations/");
+        gridDataAvailable = false;
     }
 
-    fileDir.cd("../../../annotations/");
+    qDebug()<<fileDir.path();
+
 
     annotatorsList = fileDir.entryList(QDir::Dirs);
     annotatorsList.removeOne("..");
@@ -318,7 +332,7 @@ bool AnnotationVisualizer::loadAnnotations(const QDir& annDir) {
             spAnnotationData[i][j] = new char *[imageWidth];
 
             for (int k = 0; k < imageWidth; k++)
-                spAnnotationData[i][j][k] = new char[imageHeight];
+                spAnnotationData[i][j][k] = new char[imageHeight]{0};
         }
     }
 
@@ -330,54 +344,79 @@ bool AnnotationVisualizer::loadAnnotations(const QDir& annDir) {
             manualCorrectionsData[i][j] = new char *[imageWidth];
 
             for (int k = 0; k < imageWidth; k++)
-                manualCorrectionsData[i][j][k] = new char[imageHeight];
+                manualCorrectionsData[i][j][k] = new char[imageHeight]{0};
         }
     }
 
-    QString spNumberVal;
-    if (spNumber == "LOWER") {
-        spNumberVal = imageType == "SPA" ? "1000" : "1250";  // 1000 for SPA, 1250 for KNEE
+    if (segmentationMethod != "MANUAL") {
+        QString spNumberVal;
+        if (spNumber == "LOWER") {
+            spNumberVal = imageType == "SPA" ? "1000" : "1250";  // 1000 for SPA, 1250 for KNEE
+        } else {
+            spNumberVal = imageType == "SPA" ? "2000" : "2500";  // 2000 for SPA, 2500 for KNEE
+        }
+
+        QString fileNameToLoad;
+
+        QDir currDir;
+        for (int ann_no = 0; ann_no < annotatorsList.size(); ann_no++) {
+            currDir = annDir;
+            if (!currDir.cd(annotatorsList.at(ann_no) + "/sp/" + imageType + spNumberVal + segmentationMethod)) {
+                QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                         tr("Cannot find superpixel annotations for %0%1 made by %2!")
+                                                 .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
+                continue;
+            }
+
+            fileNameToLoad = currDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
+                            .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+
+            if (!loadRaw(fileNameToLoad, spAnnotationData[ann_no])) {
+                QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                         tr("Cannot load superpixel annotations for %0%1 made by %2!")
+                                                 .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
+                continue;
+            }
+
+            if (!currDir.cd("../../manual/" + imageType + spNumberVal + segmentationMethod)) {
+                QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                         tr("Cannot find superpixel annotations for %0%1 made by %2!")
+                                                 .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
+                continue;
+            }
+
+            fileNameToLoad = currDir.path() + QString(QDir::separator()) + QString("%0manualAnnotations%1_%2_%3_%4_%5_1_.raw")
+                            .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
+
+            if (!loadRaw(fileNameToLoad, manualCorrectionsData[ann_no])) {
+                QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                         tr("Cannot load manual corrections for %0%1 made by %2!")
+                                                 .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
+                continue;
+            }
+        }
     } else {
-        spNumberVal = imageType == "SPA" ? "2000" : "2500";  // 2000 for SPA, 2500 for KNEE
-    }
+        QString fileNameToLoad;
 
-    QString fileNameToLoad;
+        QDir currDir;
+        for (int ann_no = 0; ann_no < annotatorsList.size(); ann_no++) {
+            currDir = annDir;
+            if (!currDir.cd(annotatorsList.at(ann_no) + "/manual/" +  imageType + segmentationMethod)) {
+                QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                         tr("Cannot find superpixel annotations for %0 made by %1!")
+                                                 .arg(segmentationMethod).arg(annotatorsList.at(ann_no)));
+                continue;
+            }
 
-    QDir currDir;
-    for (int ann_no = 0; ann_no < annotatorsList.size(); ann_no++) {
-        currDir = annDir;
-        if (!currDir.cd(annotatorsList.at(ann_no) + "/sp/" + imageType + spNumberVal + segmentationMethod)) {
-            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                     tr("Cannot find superpixel annotations for %0%1 made by %2!")
-                                             .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
-            continue;
-        }
+            fileNameToLoad = currDir.path() + QString(QDir::separator()) + QString("0manualAnnotations%0_%1_%2_%3_%4_1_.raw")
+                            .arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
 
-        fileNameToLoad = currDir.path() + QString(QDir::separator()) + QString("%0spAnnotations%1_%2_%3_%4_%5_1_.raw")
-                .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
-
-        if (!loadRaw(fileNameToLoad, spAnnotationData[ann_no])){
-            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                     tr("Cannot load superpixel annotations for %0%1 made by %2!")
-                                             .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
-            continue;
-        }
-
-        if (!currDir.cd("../../manual/" + imageType + spNumberVal + segmentationMethod)) {
-            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                     tr("Cannot find superpixel annotations for %0%1 made by %2!")
-                                             .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
-            continue;
-        }
-
-        fileNameToLoad = currDir.path() + QString(QDir::separator()) + QString("%0manualAnnotations%1_%2_%3_%4_%5_1_.raw")
-                .arg(spNumberVal).arg(segmentationMethod).arg(patientNo).arg(imageWidth).arg(imageHeight).arg(slicesNo);
-
-        if (!loadRaw(fileNameToLoad, manualCorrectionsData[ann_no])){
-            QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
-                                     tr("Cannot load manual corrections for %0%1 made by %2!")
-                                             .arg(segmentationMethod).arg(spNumberVal).arg(annotatorsList.at(ann_no)));
-            continue;
+            if (!loadRaw(fileNameToLoad, manualCorrectionsData[ann_no])) {
+                QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
+                                         tr("Cannot load manual corrections for %1 made by %2!")
+                                                 .arg(segmentationMethod).arg(annotatorsList.at(ann_no)));
+                continue;
+            }
         }
     }
     return true;
@@ -535,7 +574,7 @@ void AnnotationVisualizer::updateDisplay() {
                             combinedAnnotationData[x][y]++;
                         }
                     }
-            } else {
+            } else if (displayedAnnotations == "MANUAL") {
                 for (int x = 0; x < imageWidth; x++)
                     for (int y = 0; y < imageHeight; y++) {
                         if (manualCorrectionsData[ann_no][currSlice][x][y] == 1) {
