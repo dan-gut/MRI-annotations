@@ -303,9 +303,6 @@ bool AnnotationVisualizer::loadFiles(const QString &fileName){
         gridDataAvailable = false;
     }
 
-    qDebug()<<fileDir.path();
-
-
     annotatorsList = fileDir.entryList(QDir::Dirs);
     annotatorsList.removeOne("..");
     annotatorsList.removeOne(".");
