@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import altair as alt
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import os
 
@@ -14,6 +15,15 @@ KNEE_CASE_LIST = [1, 5, 7, 10, 11, 12]
 
 ANN_TYPES = ['KNEE1250LSC', 'KNEE1250TPS', 'KNEE2500LSC', "KNEE2500TPS", 'KNEEMANUAL',
              'SPA1000LSC', 'SPA1000TPS', 'SPA2000LSC', 'SPA2000TPS', 'SPAMANUAL']
+
+GENERAL_ANN_NAMES = {'KNEE1250LSC': "LSC-lower", 'KNEE1250TPS': "TPS-lower",
+                     'KNEE2500LSC': "LSC-higher", "KNEE2500TPS": "LSC-higher",
+                     'SPA1000LSC': "LSC-lower", 'SPA1000TPS': "TPS-lower",
+                     'SPA2000LSC': "LSC-higher", 'SPA2000TPS': "TPS-higher"}
+
+SP_METHODS = ['LSC', 'TPS']
+LOWER_VALUES = ['1000', '1250']
+HIGHER_VALUES = ['2000', '2500']
 
 
 def read_binary_data(filepath, img_size, slices_no, signed=False):
@@ -179,9 +189,58 @@ def plot_agreement_ratios(agreement_area_ratios, description=''):
     chart.save(f'plots/agreement_area_{description}.png')
 
 
-def plot_correction_ratio(manual_to_sp_ratios, description=''):
-    pd.DataFrame(manual_to_sp_ratios).plot(kind='bar', title=f'Manual_corrections/superpixel_{description}')
-    plt.savefig(f'plots/manual_to_sp_ratio_{description}.png')
+def prepare_ratio_data(ratio_dict_list, name_list):
+    def transform_dict(ratio_dict):
+        processed_ratio_dict = {ann_type: [] for ann_type in set(GENERAL_ANN_NAMES.values())}
+        processed_ratio_stds_dict = {ann_type: [] for ann_type in set(GENERAL_ANN_NAMES.values())}
+
+        for ann_type, ratios in ratio_dict.items():
+            key = ''
+            for method in SP_METHODS:
+                if method in ann_type:
+                    key += method + '-'
+                    break
+            if any(px_no in ann_type for px_no in LOWER_VALUES):
+                key += 'lower'
+            elif any(px_no in ann_type for px_no in HIGHER_VALUES):
+                key += 'higher'
+            else:
+                raise ValueError('Incorrect superpixels number.')
+
+            for ratio_list in ratios.values():
+                processed_ratio_dict[key].extend(ratio_list)
+                processed_ratio_stds_dict[key].extend(ratio_list)
+
+        for ann_type, ratio_list in processed_ratio_dict.items():
+            processed_ratio_dict[ann_type] = np.mean(ratio_list)
+            processed_ratio_stds_dict[ann_type] = np.std(ratio_list)
+
+        return processed_ratio_dict, processed_ratio_stds_dict
+
+    mean_ratios_dict = {}
+    std_ratios_dict = {}
+    for ratio_dict, name in zip(ratio_dict_list, name_list):
+        mean_dict, std_dict = transform_dict(ratio_dict)
+        mean_ratios_dict[name] = mean_dict
+        std_ratios_dict[name] = std_dict
+
+    return mean_ratios_dict, std_ratios_dict
+
+
+def plot_correction_ratio(manual_to_sp_ratios_dict, manual_to_sp_ratios_std_dict):
+    df = pd.DataFrame(manual_to_sp_ratios_dict)
+    err_bars = [[std_val for std_val in std_dict.values()] for std_dict in manual_to_sp_ratios_std_dict.values()]
+    ax = df.plot(kind='bar', rot=0, yerr=err_bars, capsize=3)
+
+    ax.set_axisbelow(True)
+    ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
+    ax.grid(which='major', axis='y', linestyle='solid')
+    ax.grid(which='minor', axis='y', linestyle='solid', linewidth=0.5)
+
+    ax.set_ylabel("Manual corrections area to superpixel area ratio [-]")
+    plt.subplots_adjust(left=0.12, right=0.97, top=0.97, bottom=0.08)
+
+    plt.savefig(f'plots/manual_to_sp_ratio.pdf')
     plt.clf()
 
 
@@ -211,20 +270,20 @@ if __name__ == '__main__':
                 if ann_type[:3] == 'SPA':
                     for rater in raters.keys():
                         ratio = manual_to_sp_ratio(manual_annotations[ann_type][case_no][rater],
-                                                             sp_annotations[ann_type][case_no][rater])
+                                                   sp_annotations[ann_type][case_no][rater])
                         if ratio != -1:
                             m2s_ratios.append(ratio)
 
-                    manual_to_sp_ratios_SPA[ann_type][case_no] = np.mean(m2s_ratios)
+                    manual_to_sp_ratios_SPA[ann_type][case_no] = m2s_ratios
 
                 elif ann_type[:4] == 'KNEE':
                     for rater in raters.keys():
                         ratio = manual_to_sp_ratio(manual_annotations[ann_type][case_no][rater],
-                                                             sp_annotations[ann_type][case_no][rater])
+                                                   sp_annotations[ann_type][case_no][rater])
                         if ratio != -1:
                             m2s_ratios.append(ratio)
 
-                    manual_to_sp_ratios_KNEE[ann_type][case_no] = np.mean(m2s_ratios)
+                    manual_to_sp_ratios_KNEE[ann_type][case_no] = m2s_ratios
 
             if ann_type[:3] == 'SPA':
                 agr_area_ratios_SPA[ann_type][case_no] = \
@@ -234,6 +293,8 @@ if __name__ == '__main__':
                     agreement_area_ratio(list(combined_annotations[ann_type][case_no].values()))
 
     plot_agreement_ratios(agr_area_ratios_SPA, description='SPA')
-    plot_correction_ratio(manual_to_sp_ratios_SPA, description='SPA')
     plot_agreement_ratios(agr_area_ratios_KNEE, description='KNEE')
-    plot_correction_ratio(manual_to_sp_ratios_KNEE, description='KNEE')
+
+    manual_to_sp_ratios_combined, manual_to_sp_ratios_std_combined = \
+        prepare_ratio_data([manual_to_sp_ratios_SPA, manual_to_sp_ratios_KNEE], ['SIJ', 'Knee'])
+    plot_correction_ratio(manual_to_sp_ratios_combined, manual_to_sp_ratios_std_combined)
