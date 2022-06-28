@@ -234,8 +234,8 @@ def plot_correction_ratio(manual_to_sp_ratios_dict, manual_to_sp_ratios_std_dict
 
     ax.set_axisbelow(True)
     ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
-    ax.grid(which='major', axis='y', linestyle='solid')
-    ax.grid(which='minor', axis='y', linestyle='solid', linewidth=0.5)
+    ax.grid(which='major', axis='y', linestyle='solid', linewidth=0.6)
+    ax.grid(which='minor', axis='y', linestyle='solid', linewidth=0.3)
 
     ax.set_ylabel("Manual corrections area to superpixel area ratio [-]")
     plt.subplots_adjust(left=0.12, right=0.97, top=0.97, bottom=0.08)
