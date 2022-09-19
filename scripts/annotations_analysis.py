@@ -17,7 +17,7 @@ ANN_TYPES = ['KNEE1250LSC', 'KNEE1250TPS', 'KNEE2500LSC', "KNEE2500TPS", 'KNEEMA
              'SPA1000LSC', 'SPA1000TPS', 'SPA2000LSC', 'SPA2000TPS', 'SPAMANUAL']
 
 GENERAL_ANN_NAMES = {'KNEE1250LSC': "LSC-lower", 'KNEE1250TPS': "TPS-lower",
-                     'KNEE2500LSC': "LSC-higher", "KNEE2500TPS": "LSC-higher",
+                     'KNEE2500LSC': "LSC-higher", "KNEE2500TPS": "TPS-higher",
                      'SPA1000LSC': "LSC-lower", 'SPA1000TPS': "TPS-lower",
                      'SPA2000LSC': "LSC-higher", 'SPA2000TPS': "TPS-higher"}
 
