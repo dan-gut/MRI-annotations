@@ -58,6 +58,7 @@ private:
     void manualCorrectionLine(QPoint &endPoint, const bool &adding);
     void markPixel(const int &x, const int &y, const bool &adding);
     void markSuperPixel(const QPoint & position, const bool &adding);
+    void markSuperVoxel(const QPoint &position, const bool &adding);
 
     bool loadFiles(const QString &fileName);
     bool loadRaw(const QString &fileName, unsigned short ***dataArray) const;

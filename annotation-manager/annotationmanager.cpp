@@ -131,6 +131,11 @@ void AnnotationManager::createActions() {
     setTPSAct->setCheckable(true);
     segMethodChoiceGroup->addAction(setTPSAct);
 
+    QAction *setSLICAct = segMethodMenu->addAction(tr("SLIC (3D)"));
+    setSLICAct->setData("SLIC");
+    setSLICAct->setCheckable(true);
+    segMethodChoiceGroup->addAction(setSLICAct);
+
     QAction *setManualAct = segMethodMenu->addAction(tr("Manual"));
     setManualAct->setData("MANUAL");
     setManualAct->setCheckable(true);
@@ -251,8 +256,15 @@ void AnnotationManager::updateActions() {
     nextComparisonImageAct->setEnabled(!comparisonData.isEmpty());
 
     if(filesLoaded) {
-        imageType == "SPA" ? setLessSpAct->setText(tr("1000")) : setLessSpAct->setText(tr("1250")); // 1000 for SPA, 1250 for KNEE
-        imageType == "SPA" ? setMoreSpAct->setText(tr("2000")) : setMoreSpAct->setText(tr("2500")); // 2000 for SPA, 2500 for KNEE
+        if (imageType == "SPA"){
+            setLessSpAct->setText(tr("1000"));
+            setMoreSpAct->setText(tr("2000"));}
+        else if (imageType == "KNEE"){
+            setLessSpAct->setText(tr("1250"));
+            setMoreSpAct->setText(tr("2500"));}
+        else if (imageType == "ABDOMEN"){
+            setLessSpAct->setText(tr("1600"));
+            setMoreSpAct->setText(tr("3200"));}
     } else {
         setLessSpAct->setText(tr("Lower (bigger regions)"));
         setMoreSpAct->setText(tr("Higher (smaller regions)"));
@@ -271,7 +283,11 @@ void AnnotationManager::mousePressEvent(QMouseEvent *event) {
             lastManualPoint = position;
             manualCorrectionLine(position, true);
         } else {
-            markSuperPixel(position, true);
+            if (segmentationMethod != "SLIC") {
+                markSuperPixel(position, true);
+            } else {
+                markSuperVoxel(position, true);
+            }
         }
     } else if (event->buttons() == Qt::RightButton) {
         clickedRight = true;
@@ -279,7 +295,11 @@ void AnnotationManager::mousePressEvent(QMouseEvent *event) {
             lastManualPoint = position;
             manualCorrectionLine(position, false);
         } else {
-            markSuperPixel(position, false);
+            if (segmentationMethod != "SLIC") {
+                markSuperPixel(position, false);
+            } else {
+                markSuperVoxel(position, false);
+            }
         }
     }
 }
@@ -294,13 +314,21 @@ void AnnotationManager::mouseMoveEvent(QMouseEvent *event) {
         if (manualCorrectionsMode) {
             manualCorrectionLine(position, true);
         } else {
-            markSuperPixel(position, true);
+            if (segmentationMethod != "SLIC") {
+                markSuperPixel(position, true);
+            } else {
+                markSuperVoxel(position, true);
+            }
         }
     } else if ((event->buttons() & Qt::RightButton) && clickedRight) {
         if (manualCorrectionsMode) {
             manualCorrectionLine(position, false);
         } else {
-            markSuperPixel(position, false);
+            if (segmentationMethod != "SLIC") {
+                markSuperPixel(position, false);
+            } else {
+                markSuperVoxel(position, false);
+            }
         }
     }
 }
@@ -316,14 +344,22 @@ void AnnotationManager::mouseReleaseEvent(QMouseEvent *event) {
         if (manualCorrectionsMode) {
             manualCorrectionLine(position, true);
         } else {
-            markSuperPixel(position, true);
+            if (segmentationMethod != "SLIC") {
+                markSuperPixel(position, true);
+            } else {
+                markSuperVoxel(position, true);
+            }
         }
     } else if ((event->buttons() == Qt::RightButton) && clickedRight) {
         clickedRight = false;
         if (manualCorrectionsMode) {
             manualCorrectionLine(position, false);
         } else {
-            markSuperPixel(position, false);
+            if (segmentationMethod != "SLIC") {
+                markSuperPixel(position, false);
+            } else {
+                markSuperVoxel(position, false);
+            }
         }
     }
 }
@@ -427,6 +463,61 @@ void AnnotationManager::markSuperPixel(const QPoint &position, const bool &addin
     unsavedChanges = true;
 }
 
+void AnnotationManager::markSuperVoxel(const QPoint &position, const bool &adding) {
+    int x = position.x();
+    int y = position.y();
+
+    if (x < 0 || x > imageWidth - 1 || y < 0 || y > imageHeight - 1) { return; }
+
+    unsigned short chosenColor = spData[currSlice][x][y];
+
+    std::queue<std::pair<int, int>> pointsQueue;
+    pointsQueue.emplace(x, y);
+
+    std::pair<int, int> currPoint;
+    int currX;
+    int currY;
+
+    while (!pointsQueue.empty()) {
+        currPoint = pointsQueue.front();
+        pointsQueue.pop();
+        currX = currPoint.first;
+        currY = currPoint.second;
+
+        // Going through chosen point and it's neighbours (if it's inside image area)
+        for (int i = -1; i <= 1; i++)
+            for (int j = -1; j <= 1; j++) {
+                if (currX + i >= 0 && currX + i < imageWidth && currY + j >= 0 && currY + j < imageHeight) {
+                    for (int slice=0; slice<slicesNo; slice++) {
+                        if (spData[slice][currX + i][currY + j] == chosenColor) {
+                            if (adding) { // Adding new supervoxel to annotation
+                                if (spAnnotationData[slice][currX + i][currY + j] == 0) {
+                                    pointsQueue.emplace(currX + i, currY + j);
+                                    spAnnotationData[slice][currX + i][currY + j] = 1;
+                                    if (manualCorrectionsData[slice][currX + i][currY + j] == 1) {
+                                        manualCorrectionsData[slice][currX + i][currY + j] = 0;
+                                        // If there was correction in area of newly added superpixel it's removed
+                                    }
+                                }
+                            } else { // Removing supervoxel from annotation
+                                if (spAnnotationData[slice][currX + i][currY + j]) {
+                                    pointsQueue.emplace(currX + i, currY + j);
+                                    spAnnotationData[slice][currX + i][currY + j] = 0;
+                                    if (manualCorrectionsData[slice][currX + i][currY + j] == -1) {
+                                        manualCorrectionsData[slice][currX + i][currY + j] = 0;
+                                        // If there was correction in area of newly removed superpixel it's removed
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+    }
+    updateDisplay();
+    unsavedChanges = true;
+}
+
 bool AnnotationManager::loadFiles(const QString &fileName){
     QDir fileDir(fileName);
     QFileInfo fileInfo(fileName);
@@ -485,9 +576,13 @@ bool AnnotationManager::loadFiles(const QString &fileName){
         QString spNumberVal;
 
         if (spNumber == "LOWER") {
-            spNumberVal = imageType == "SPA" ? "1000" : "1250"; // 1000 for SPA, 1250 for KNEE
+            if (imageType == "SPA"){spNumberVal = "1000";}
+            else if (imageType == "KNEE"){spNumberVal = "1250";}
+            else if (imageType == "ABDOMEN"){spNumberVal ="1600";}
         } else {
-            spNumberVal = imageType == "SPA" ? "2000" : "2500"; // 2000 for SPA, 2500 for KNEE
+            if (imageType == "SPA"){spNumberVal = "2000";}
+            else if (imageType == "KNEE"){spNumberVal = "2500";}
+            else if (imageType == "ABDOMEN"){spNumberVal ="3200";}
         }
 
         if (!fileDir.cd("../../segmentations/superpixels/" + imageType + spNumberVal + segmentationMethod)) {
